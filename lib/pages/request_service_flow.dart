@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_icons/flutter_icons.dart';
 import 'package:repair_service_ui/utils/constants.dart';
 import 'package:repair_service_ui/widgets/home_page_one.dart';
-import 'package:repair_service_ui/widgets/home_page_three.dart';
 import 'package:repair_service_ui/widgets/home_page_two.dart';
 
 class RequestServiceFlow extends StatefulWidget {
@@ -35,7 +34,7 @@ class _RequestServiceFlowState extends State<RequestServiceFlow> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          current == 1 ? 'KATA TIKETI' : 'SHABIBY LINE',
+          current == 1 ? 'TIKETI' : 'SHABIBY LINE',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,

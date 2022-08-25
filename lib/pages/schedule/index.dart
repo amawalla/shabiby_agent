@@ -82,7 +82,8 @@ class _SchedulePageState extends State<SchedulePage>
       _travelDate..text = _rangePickerController.selectedDate.toString();
       routes = routeResponse;
       choices = routes
-          .map((item) => S2Choice<String>(value: item.id, title: item.name))
+          .map((item) =>
+              S2Choice<String>(value: item.id.toString(), title: item.name))
           .toList();
       schedules = schedules;
       scheduleIsLoading = false;
@@ -191,8 +192,8 @@ class _SchedulePageState extends State<SchedulePage>
               onChange: (selected) async {
                 setState(() {
                   _route = TextEditingController(text: selected.value);
-                  selectedRoute = routes
-                      .firstWhere((element) => element.id == selected.value);
+                  selectedRoute = routes.firstWhere(
+                      (element) => element.id.toString() == selected.value);
                 });
               },
               // modalType: S2ModalType.bottomSheet,
@@ -207,7 +208,7 @@ class _SchedulePageState extends State<SchedulePage>
                       const Icon(Icons.map, size: 40, color: Colors.redAccent),
                 );
               },
-              value: selectedRoute != null ? selectedRoute.id : null,
+              value: selectedRoute != null ? selectedRoute.id.toString() : null,
             )
           : SizedBox(),
       Divider(height: 0),
@@ -426,6 +427,17 @@ class _SchedulePageState extends State<SchedulePage>
                                         status: 'Printing Seat Plan ',
                                         dismissOnTap: true);
                                     await Functions.printSeatPlan(
+                                        context, schedule);
+                                    EasyLoading.dismiss();
+                                  }),
+                              BottomSheetAction(
+                                  title: const Text('Chapa Manifesti'),
+                                  onPressed: (context) async {
+                                    EasyLoading.show(
+                                        status:
+                                            'Printing Seat Plan ( Bluetooth ) ',
+                                        dismissOnTap: true);
+                                    await Functions.printSeatPlanBluetooth(
                                         context, schedule);
                                     EasyLoading.dismiss();
                                   }),

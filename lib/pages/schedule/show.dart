@@ -170,6 +170,33 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
 
                 EasyLoading.dismiss();
               }),
+          BottomSheetAction(
+              title: Text('Chapa Tiketi ( ' +
+                  (isSelected != null
+                          ? isSelected
+                              .where((element) => element == true)
+                              .length
+                          : 0)
+                      .toString() +
+                  ' ) - Bluetooth'),
+              onPressed: (context) async {
+                if (isSelected != null && bookings != null) {
+                  for (var i = 0;
+                      i < isSelected.where((e) => e == true).length;
+                      i++) {
+                    BookingModel bookingModal = bookings[i];
+                    EasyLoading.show(
+                        status: 'Printing Tiketi ' +
+                            bookingModal.ticketNo.toString(),
+                        dismissOnTap: true);
+                    await Functions.printTicketBluetooth(
+                        context, bookingModal.ticketNo);
+                    print(bookingModal.ticketNo);
+                  }
+                }
+
+                EasyLoading.dismiss();
+              })
         ],
         cancelAction: CancelAction(
             title: Text('SITISHA'),
@@ -227,6 +254,15 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
                   status: 'Printing Tiketi ' + booking.ticketNo.toString(),
                   dismissOnTap: true);
               await Functions.printTicket(context, booking.ticketNo);
+              EasyLoading.dismiss();
+            }),
+        BottomSheetAction(
+            title: const Text('Chapa Tiketi ( Bluetooth )'),
+            onPressed: (context) async {
+              EasyLoading.show(
+                  status: 'Printing Tiketi ' + booking.ticketNo.toString(),
+                  dismissOnTap: true);
+              await Functions.printTicketBluetooth(context, booking.ticketNo);
               EasyLoading.dismiss();
             }),
         BottomSheetAction(

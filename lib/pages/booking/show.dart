@@ -1,3 +1,4 @@
+import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:repair_service_ui/models/model.dart';
@@ -15,6 +16,7 @@ class BookingTicket extends StatefulWidget {
 
 class _BookingTicketState extends State<BookingTicket> {
   bool isLoading = false;
+  BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +106,13 @@ class _BookingTicketState extends State<BookingTicket> {
                   setState(() {
                     isLoading = true;
                   });
-                  await Functions.printTicket(context, widget.booking.ticketNo);
+                  if (bluetooth.isConnected != null) {
+                    await Functions.printTicketBluetooth(
+                        context, widget.booking.ticketNo);
+                  } else {
+                    await Functions.printTicket(
+                        context, widget.booking.ticketNo);
+                  }
                   setState(() {
                     isLoading = false;
                   });

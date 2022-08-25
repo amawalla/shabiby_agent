@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:repair_service_ui/actions/api.dart';
 import 'package:repair_service_ui/models/model.dart';
+import 'package:repair_service_ui/pages/setting/bluetooth/bluetooth.dart';
 import 'package:repair_service_ui/pages/user/profile.dart';
 import 'package:repair_service_ui/utils/constants.dart';
 import 'package:repair_service_ui/utils/session.dart';
@@ -90,6 +91,8 @@ class _SettingState extends State<Setting> {
                 SettingsTile(
                   title: Text('Bluetooth'),
                   description: Text('Chagua printer ya kutumia'),
+                  onPressed: (e) =>
+                      Functions.pushPage(context, BluetoothSetting()),
                 ),
                 SettingsTile(
                   title: Text('Thermal'),
