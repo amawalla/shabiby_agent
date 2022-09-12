@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
@@ -17,6 +20,9 @@ import 'package:repair_service_ui/widgets/red_button.dart';
 import 'package:skeletons/skeletons.dart';
 import 'package:smart_select/smart_select.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
+
+import '../../utils/session.dart';
+import '../setting/bluetooth/bluetooth.dart';
 
 class SchedulePage extends StatefulWidget {
   @override
@@ -47,21 +53,20 @@ class _SchedulePageState extends State<SchedulePage>
   TabController tabController;
   RefreshController _refreshController =
       RefreshController(initialRefresh: false);
+  final box = GetStorage();
 
   Future _onRefresh() async {
     setState(() {
       scheduleIsLoading = true;
     });
     // monitor network fetch
-    await _initializeProcess();
+    await fetchSchedules();
     // if failed,use refreshFailed()
     _refreshController.refreshCompleted();
   }
 
   void _onLoading() async {
-    // monitor network fetch
     _initializeProcess();
-    await Future.delayed(Duration(milliseconds: 1000));
     _refreshController.loadComplete();
   }
 
@@ -71,16 +76,34 @@ class _SchedulePageState extends State<SchedulePage>
     WidgetsBinding.instance?.addPostFrameCallback((_) async {
       await _initializeProcess();
     });
-    tabController = TabController(length: 2, vsync: this, initialIndex: 1);
+    tabController = TabController(length: 2, vsync: this, initialIndex: 0);
   }
 
   Future _initializeProcess() async {
-    List<RouteModel> routeResponse = await Api.getRoutes();
-    schedules = await Api.fetchTodaySchedules(DateTime.now());
+    List<RouteModel> routeResponse;
+    dynamic storeRoutes = box.read('routes');
+    dynamic defaultRoute = await Session().get('default_route');
+
+    routeResponse = await Api.getRoutes();
+    if (storeRoutes == null) {
+      routeResponse = await Api.getRoutes();
+    } else {
+      List data = json.decode(storeRoutes);
+      routeResponse = data
+          .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    schedules = defaultRoute != null
+        ? await Api.fetchSchedules(
+            DateTime.now().toString(), defaultRoute.toString())
+        : await Api.fetchTodaySchedules(DateTime.now());
+
     setState(() {
       _rangePickerController.selectedDate = DateTime.now();
       _travelDate..text = _rangePickerController.selectedDate.toString();
       routes = routeResponse;
+      _route.text = defaultRoute != null ? defaultRoute.toString() : null;
       choices = routes
           .map((item) =>
               S2Choice<String>(value: item.id.toString(), title: item.name))
@@ -90,56 +113,94 @@ class _SchedulePageState extends State<SchedulePage>
     });
   }
 
-  TabBar get _tabBar => TabBar(
-        indicatorColor: Colors.white,
-        onTap: (c) {
-          setState(() {
-            buttonIsLoading = false;
-          });
-        },
-        controller: tabController,
-        tabs: [
-          Tab(
-            icon: Icon(Icons.search_rounded),
-          ),
-          Tab(
-            icon: Icon(Icons.calendar_today),
-          ),
-        ],
-      );
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      bottomNavigationBar: BottomNavigationBar(
+        onTap: (int _index) {
+          setState(() {
+            tabController.index = _index;
+          });
+        },
+        unselectedItemColor: Colors.white54,
+        currentIndex: tabController.index,
         backgroundColor: Colors.redAccent,
-        brightness: Brightness.light,
-        elevation: 3.0,
+        iconSize: 25,
+        fixedColor: Colors.white,
+        elevation: 6,
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+              icon: Icon(
+                Icons.calendar_today,
+                color: Colors.white,
+              ),
+              label: 'Ratiba',
+              backgroundColor: Colors.white),
+          BottomNavigationBarItem(
+              icon: Icon(
+                Icons.search,
+                color: Colors.white,
+              ),
+              label: 'Tafuta',
+              backgroundColor: Colors.white),
+        ],
+      ),
+      appBar: AppBar(
         centerTitle: true,
-        bottom: PreferredSize(
-            preferredSize: _tabBar.preferredSize,
-            child: Material(
-              elevation: 3,
-              color: Colors.redAccent,
-              child: _tabBar,
-            )),
-        title: const Text(
-          'RATIBA ZA MABASI',
+        toolbarHeight: 70,
+        backgroundColor: Colors.redAccent,
+        elevation: 4.0,
+        actions: [
+          box.read('is_printer') == false
+              ? InkWell(
+                  onTap: () => Functions.pushPage(context, BluetoothSetting()),
+                  child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: box.read('bluetooth_device_connected') != null
+                          ? Icon(
+                              Icons.bluetooth,
+                              color: Colors.redAccent.shade100,
+                              size: 28,
+                            )
+                          : Icon(
+                              Icons.bluetooth_disabled,
+                              color: Colors.white70,
+                              size: 28,
+                            )),
+                )
+              : SizedBox()
+        ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(selectedRoute?.name ?? ' RATIBA ZA MABASI ',
+                style: TextStyle(fontSize: 18)),
+            SizedBox(
+              height: 5,
+            ),
+            Text(
+                DateFormat.yMMMMd().format(
+                    _rangePickerController.selectedDate ?? DateTime.now()),
+                style: TextStyle(fontSize: 14)),
+            SizedBox(
+              height: 5,
+            ),
+          ],
         ),
       ),
       body: TabBarView(
         controller: tabController,
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10),
-            child: renderSearchContainer(context),
-          ),
-          Padding(
               padding: EdgeInsets.symmetric(horizontal: 0, vertical: 10),
               child: Skeleton(
                   isLoading: scheduleIsLoading,
                   skeleton: SkeletonListView(),
                   child: renderSchedules())),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: renderSearchContainer(context),
+          ),
         ],
       ),
     );
@@ -160,7 +221,7 @@ class _SchedulePageState extends State<SchedulePage>
   Widget renderSearchContainer(BuildContext context) {
     return Column(children: [
       Container(
-          margin: EdgeInsets.only(top: 20),
+          margin: EdgeInsets.only(top: 5),
           child: SfDateRangePicker(
               todayHighlightColor: Colors.redAccent,
               monthViewSettings:
@@ -171,14 +232,12 @@ class _SchedulePageState extends State<SchedulePage>
               showActionButtons: false,
               selectionColor: Colors.redAccent,
               rangeSelectionColor: Colors.redAccent,
-              enablePastDates: false,
               showNavigationArrow: true,
               controller: _rangePickerController,
               onSelectionChanged: (date) async {
                 if (date.value is DateTime) {
                   _travelDate.text = DateFormat('yyyy-MM-dd')
                       .format(_rangePickerController.selectedDate);
-                  //await fetchSchedules();
                 }
               })),
       Divider(height: 0),
@@ -189,6 +248,7 @@ class _SchedulePageState extends State<SchedulePage>
               //selectedValue: _os,
               choiceItems: choices,
               choiceDivider: true,
+              modalType: S2ModalType.bottomSheet,
               onChange: (selected) async {
                 setState(() {
                   _route = TextEditingController(text: selected.value);
@@ -274,7 +334,7 @@ class _SchedulePageState extends State<SchedulePage>
           );
         }
         schedules = scheduleResponse;
-        tabController.animateTo(1, curve: Curves.easeInOut);
+        tabController.animateTo(0, curve: Curves.easeInOut);
         tabController.addListener(() {
           _setSchedules(schedules, move);
         });
@@ -306,7 +366,8 @@ class _SchedulePageState extends State<SchedulePage>
         onLoading: _onLoading,
         enablePullDown: true,
         enablePullUp: false,
-        header: MaterialClassicHeader(),
+        header: MaterialClassicHeader(
+            color: Colors.white, backgroundColor: Colors.redAccent),
         child: schedules == null || schedules.isEmpty
             ? EmptyWidget(
                 hideBackgroundAnimation: true,
@@ -341,7 +402,7 @@ class _SchedulePageState extends State<SchedulePage>
                         title: Text(
                           schedule.route,
                           style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87.withOpacity(0.8)),
                         ),
@@ -351,27 +412,31 @@ class _SchedulePageState extends State<SchedulePage>
                               SizedBox(
                                 height: 5,
                               ),
-                              Text(schedule.name),
+                              Text(schedule.name,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black)),
+                              SizedBox(
+                                height: 5,
+                              ),
+                              Text(
+                                  'Jumla ya Tiketi:  ' +
+                                      (schedule.totalBookings.toString()),
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87)),
                               SizedBox(
                                 height: 2,
                               ),
-                              Text('Jumla ya Tiketi:  ' +
-                                  (schedule.totalBookings.toString())),
-                              SizedBox(
-                                height: 2,
-                              ),
-                              Text('Siti zilizopo:  ' +
-                                  schedule.totalAvailableSeats.toString()),
-                              SizedBox(
-                                height: 2,
-                              ),
-                              Text('Jumla ya siti:  ' +
-                                  schedule.totalSeats.toString()),
-                              SizedBox(
-                                height: 2,
-                              ),
-                              Text('Siti zilizohifadhiwa:  ' +
-                                  schedule.totalReservedSeats.toString()),
+                              Text(
+                                  'Siti zilizopo:  ' +
+                                      schedule.totalAvailableSeats.toString(),
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87)),
                               SizedBox(
                                 height: 2,
                               ),
@@ -399,7 +464,7 @@ class _SchedulePageState extends State<SchedulePage>
                             context: context,
                             title: Column(
                               children: [
-                                Text('RATIBA YA BASI - ' + schedule.scheduleNo,
+                                Text('RATIBA YA BASI',
                                     style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 18)),
@@ -423,41 +488,32 @@ class _SchedulePageState extends State<SchedulePage>
                               BottomSheetAction(
                                   title: const Text('Chapa Manifesti'),
                                   onPressed: (context) async {
-                                    EasyLoading.show(
+                                    await EasyLoading.show(
                                         status: 'Printing Seat Plan ',
                                         dismissOnTap: true);
+
                                     await Functions.printSeatPlan(
                                         context, schedule);
-                                    EasyLoading.dismiss();
-                                  }),
-                              BottomSheetAction(
-                                  title: const Text('Chapa Manifesti'),
-                                  onPressed: (context) async {
-                                    EasyLoading.show(
-                                        status:
-                                            'Printing Seat Plan ( Bluetooth ) ',
-                                        dismissOnTap: true);
-                                    await Functions.printSeatPlanBluetooth(
-                                        context, schedule);
-                                    EasyLoading.dismiss();
+                                    await EasyLoading.dismiss();
                                   }),
                               BottomSheetAction(
                                   title: const Text('Chapa Tiketi Zote'),
                                   onPressed: (context) async {
                                     EasyLoading.show(
-                                        status: 'Printing Tiketi ',
+                                        status: 'Inachapisha Tiketi ',
                                         dismissOnTap: true);
                                     List<BookingModel> bookings =
                                         await Api.getBookings(schedule);
                                     if (bookings != null) {
-                                      for (BookingModel booking in bookings) {
-                                        print('Printing ' + booking.ticketNo);
-                                        await Functions.printTicket(
-                                            context, booking.ticketNo);
-                                      }
+                                      await Functions.batchPrintBookings(
+                                          context, bookings);
                                     } else {
-                                      EasyLoading.showError(
-                                          'Hakuna tiketi za kuchapa');
+                                      Fluttertoast.showToast(
+                                        msg: 'Hakuna tiketi ya kuchapa',
+                                        backgroundColor: Colors.red,
+                                        textColor: Colors.white,
+                                        toastLength: Toast.LENGTH_LONG,
+                                      );
                                     }
                                     EasyLoading.dismiss();
                                   }),

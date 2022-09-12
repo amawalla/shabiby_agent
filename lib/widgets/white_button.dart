@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:repair_service_ui/utils/constants.dart';
 
-class RedButton extends StatelessWidget {
+class WhiteButton extends StatelessWidget {
   final String text;
   final Function onPressed;
   final bool isLoading;
-  RedButton({this.text, this.onPressed, this.isLoading});
+  WhiteButton({this.text, this.onPressed, this.isLoading});
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -15,14 +15,14 @@ class RedButton extends StatelessWidget {
         width: double.infinity,
         height: ScreenUtil().setHeight(59.0),
         decoration: BoxDecoration(
-          color: Constants.redColor,
+          color: Colors.white.withOpacity(0.9),
           borderRadius: BorderRadius.circular(32.0),
           boxShadow: [
             BoxShadow(
-              color: Color.fromRGBO(169, 176, 185, 0.42),
+              color: Color.fromRGBO(3, 3, 3, 0.2),
               spreadRadius: 0,
-              blurRadius: 8,
-              offset: Offset(0, 2), // changes position of shadow
+              blurRadius: 3,
+              offset: Offset(0, 6), // changes position of shadow
             ),
           ],
         ),
@@ -31,13 +31,13 @@ class RedButton extends StatelessWidget {
               ? SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(color: Colors.white))
+                  child: CircularProgressIndicator(color: Colors.redAccent))
               : Text(
                   this.text,
                   style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16),
+                      fontSize: 18,
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.w600),
                 ),
         ),
       ),

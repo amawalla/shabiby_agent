@@ -186,19 +186,40 @@ class AuthProvider with ChangeNotifier {
             toastLength: Toast.LENGTH_LONG,
             gravity: ToastGravity.BOTTOM,
             timeInSecForIosWeb: 1,
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.brown.shade900,
             textColor: Colors.white,
             fontSize: 16.0);
       }
 
       return false;
-    } catch (e) {
+    } on TimeoutException catch (e) {
+      Fluttertoast.showToast(
+          msg: 'Login failed, please try again',
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.brown.shade900,
+          textColor: Colors.white,
+          fontSize: 16.0);
+
+      print('Timeout Error: $e');
+    } on SocketException catch (e) {
+      Fluttertoast.showToast(
+          msg: 'Please check your internet connection and try again',
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.brown.shade900,
+          textColor: Colors.white,
+          fontSize: 16.0);
+      print('Socket Error: $e');
+    } on Error catch (e) {
       Fluttertoast.showToast(
           msg: e.toString(),
           toastLength: Toast.LENGTH_LONG,
           gravity: ToastGravity.BOTTOM,
           timeInSecForIosWeb: 1,
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.brown.shade900,
           textColor: Colors.white,
           fontSize: 16.0);
     }

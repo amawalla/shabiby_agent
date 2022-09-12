@@ -22,7 +22,7 @@ class _BookingTicketState extends State<BookingTicket> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
         child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Padding(
           padding: EdgeInsets.only(top: 10.0),
@@ -46,15 +46,12 @@ class _BookingTicketState extends State<BookingTicket> {
               SizedBox(height: 10),
               ticketDetailsWidget('Safari', widget.booking.route.name,
                   'Siti ya Abiria', widget.booking.seatNo),
-              SizedBox(height: 10),
-              Divider(),
-              SizedBox(height: 10),
+              SizedBox(height: 15),
               ticketDetailsWidget(
                   'Tarehe ya Safari',
-                  widget.booking.schedule.date ?? '',
+                  widget.booking?.schedule?.date ?? widget.booking.travelDate,
                   'Muda wa Kundoka',
                   widget.booking.departureTime),
-              SizedBox(height: 5),
             ],
           ),
         ),
@@ -63,21 +60,32 @@ class _BookingTicketState extends State<BookingTicket> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              ticketDetailsWidget('Aina ya Basi', widget.booking.busClass,
+                  'Mawasiliano', widget.booking.phone ?? ''),
+              SizedBox(height: 10),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               ticketDetailsWidget(
                   'Kiasi cha Nauli',
-                  'TSh ' + widget.booking.fare + '/=',
+                  'TSh ' + widget.booking.totalAmount + '/=',
                   'Tarehe ya Malipo',
                   widget.booking.createdAt),
               SizedBox(height: 15),
               ticketDetailsWidget(
                   'Kituo cha Kupanda',
-                  widget.booking.boardingPoint ?? 'Hakuna',
+                  widget.booking.boardingPoint ?? widget.booking.origin,
                   'Kituo cha Kushuka',
-                  widget.booking.droppingPoint ?? 'Hakuna'),
-              SizedBox(height: 20),
+                  widget.booking.droppingPoint ?? widget.booking.destination),
             ],
           ),
         ),
+        SizedBox(height: 20),
         Center(
           heightFactor: 0.1,
           child: Text(
@@ -86,7 +94,7 @@ class _BookingTicketState extends State<BookingTicket> {
                 color: Colors.black, fontSize: 17, fontWeight: FontWeight.w600),
           ),
         ),
-        SizedBox(height: 10),
+        SizedBox(height: 15),
         Center(
             child: Text(
           'Imetolewa na: ' + (widget.booking.issuedBy ?? 'Self Booking'),
@@ -100,19 +108,15 @@ class _BookingTicketState extends State<BookingTicket> {
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: PrimaryButton(
               isLoading: isLoading,
-              text: 'Print Ticket',
+              text: 'Chapa Tiketi',
               onPressed: () async {
                 if (widget.booking.confirmed) {
                   setState(() {
                     isLoading = true;
                   });
-                  if (bluetooth.isConnected != null) {
-                    await Functions.printTicketBluetooth(
-                        context, widget.booking.ticketNo);
-                  } else {
-                    await Functions.printTicket(
-                        context, widget.booking.ticketNo);
-                  }
+
+                  await Functions.printTicket(context, widget.booking.ticketNo);
+
                   setState(() {
                     isLoading = false;
                   });
@@ -153,7 +157,7 @@ Widget ticketDetailsWidget(String firstTitle, String firstDesc,
                 style: TextStyle(
                     color: Colors.black87,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16),
+                    fontSize: 14),
               ),
             )
           ],
@@ -175,7 +179,7 @@ Widget ticketDetailsWidget(String firstTitle, String firstDesc,
                 style: TextStyle(
                     color: Colors.black87,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16),
+                    fontSize: 14),
               ),
             )
           ],

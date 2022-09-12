@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_icons/flutter_icons.dart';
+import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:repair_service_ui/pages/request_service_flow.dart';
 import 'package:repair_service_ui/utils/auth.dart';
@@ -101,16 +102,7 @@ class _LoginFormState extends State<LoginForm> {
     try {
       bool response = await AuthProvider.login(username, password);
       if (response) {
-        Fluttertoast.showToast(
-            msg: 'Umefanikiwa kuingia',
-            toastLength: Toast.LENGTH_LONG,
-            gravity: ToastGravity.BOTTOM,
-            timeInSecForIosWeb: 1,
-            backgroundColor: Colors.teal.shade700,
-            textColor: Colors.white,
-            fontSize: 16.0);
-
-        Helper.nextPage(context, RequestServiceFlow());
+        Phoenix.rebirth(context);
       }
     } catch (e) {
       print(e);

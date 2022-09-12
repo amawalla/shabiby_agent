@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+
 class RouteModel {
   int id;
   String name;
@@ -50,24 +52,74 @@ class BoardingModel {
   }
 }
 
+class SubRouteModel {
+  int id;
+  int boardingPointId;
+  int droppingPointId;
+  String point;
+  BoardingModel droppintPoint;
+  BoardingModel boardingPoint;
+  int amount;
+
+  SubRouteModel(
+      {this.id,
+      this.boardingPointId,
+      this.droppingPointId,
+      this.amount,
+      this.point,
+      this.boardingPoint,
+      this.droppintPoint});
+
+  SubRouteModel.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    boardingPointId = json['boarding_point_id'];
+    droppingPointId = json['dropping_point_id'];
+    point = json['point'];
+    droppintPoint = json['boarding_point'] != null
+        ? BoardingModel.fromJson(json['boarding_point'])
+        : null;
+    boardingPoint = json['droppping_point'] != null
+        ? BoardingModel.fromJson(json['droppping_point'])
+        : null;
+    amount = json['amount'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['id'] = this.id;
+    data['amount'] = this.amount;
+    data['boarding_point_id'] = this.boardingPointId;
+    data['dropping_point_id'] = this.droppingPointId;
+    return data;
+  }
+}
+
 class PassengerModel {
   String fullName;
   String phoneNumber;
   String seatNo;
   BoardingModel boardingPoint;
   BoardingModel droppingPoint;
+  SubRouteModel subRoute;
+  int amount;
 
   PassengerModel(
       {this.fullName,
       this.phoneNumber,
       this.seatNo,
+      this.amount,
       this.boardingPoint,
+      this.subRoute,
       this.droppingPoint});
 
   PassengerModel.fromJson(Map<String, dynamic> json) {
     fullName = json['full_name'];
     phoneNumber = json['phone_number'].toString();
     seatNo = json['seat_no'].toString();
+    amount = json['amount'];
+    subRoute = json['sub_routes'] != null
+        ? SubRouteModel.fromJson(json['sub_routes'])
+        : null;
   }
 
   Map<String, dynamic> toJson() {
@@ -79,6 +131,8 @@ class PassengerModel {
         this.boardingPoint != null ? this.boardingPoint.id : null;
     data['dropping_point'] =
         this.droppingPoint != null ? this.droppingPoint.id : null;
+    data['amount'] = this.amount;
+    data['sub_route_id'] = this.subRoute != null ? this.subRoute.id : null;
     return data;
   }
 }
@@ -109,11 +163,14 @@ class ScheduleModel {
   List unavailableSeats;
   List seatRender;
   bool isPast;
+  bool isEnRoute;
   bool isFuture;
   bool isPrivate;
   bool isBusFull;
+  bool isAvailable;
   List<BoardingModel> boardingPoints;
   List<BoardingModel> droppingPoints;
+  List<SubRouteModel> subRoutes;
   String progress;
   int progressPercentage;
   String reportTime;
@@ -137,7 +194,9 @@ class ScheduleModel {
       this.isBusFull,
       this.isFuture,
       this.isPast,
+      this.isEnRoute,
       this.isPrivate,
+      this.isAvailable,
       this.progress,
       this.reservedSeats,
       this.selectedSeats,
@@ -145,6 +204,7 @@ class ScheduleModel {
       this.seatChart,
       this.seatLayout,
       this.totalSeats,
+      this.subRoutes,
       this.seatRender,
       this.totalAvailableSeats,
       this.totalBookings,
@@ -185,6 +245,8 @@ class ScheduleModel {
     visibility = json['visibility'];
     isBusFull = json['is_bus_full'] == true;
     isPast = json['is_past'] == true;
+    isEnRoute = json['is_en_route'] == true;
+    isAvailable = json['is_available'] == true;
     isFuture = json['is_future'] == true;
     isPrivate = json['is_private'] == true;
     seatLayout = json['seat_layout'].toString();
@@ -203,6 +265,11 @@ class ScheduleModel {
       List droppingData = json['dropping_points'];
       droppingPoints =
           droppingData.map((e) => BoardingModel.fromJson(e)).toList();
+    }
+    if (json['sub_routes'] != null) {
+      List subRouteData = json['sub_routes'];
+      print(json['sub_routes']);
+      subRoutes = subRouteData.map((e) => SubRouteModel.fromJson(e)).toList();
     }
     if (json['bookings'] != null) {
       List bookingData = json['bookings'];
@@ -244,6 +311,7 @@ class BookingModel {
   String issuedAt;
   String receipt;
   String createdAt;
+  Color statusColor;
   String issuedBy;
 
   BookingModel(
@@ -278,6 +346,7 @@ class BookingModel {
       this.droppingPoint,
       this.totalAmount,
       this.issuedAt,
+      this.statusColor,
       this.busClass,
       this.ticketUrl});
 
@@ -295,6 +364,7 @@ class BookingModel {
     company = json['company'];
     fare = json['fare'].toString();
     statusLabel = json['status'];
+    phone = json['phone'];
     status = json['status'];
     channel = json['channel'];
     confirmed = json['confirmed'] == true;
@@ -315,6 +385,11 @@ class BookingModel {
     totalAmount = json['total_amount'].toString();
     ticketUrl = json['ticket_url'];
     issuedAt = json['issued_at'];
+    statusColor = json['confirmed'] == true
+        ? Colors.teal.shade700
+        : (json['reserved'] == true
+            ? Colors.black87
+            : Colors.deepOrange.shade700);
   }
 }
 

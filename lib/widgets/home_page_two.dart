@@ -1,21 +1,22 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:cool_stepper/cool_stepper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
+import 'package:loading_overlay/loading_overlay.dart';
 import 'package:provider/provider.dart';
 import 'package:repair_service_ui/models/model.dart';
 import 'package:repair_service_ui/models/setting_provider.dart';
 import 'package:repair_service_ui/pages/request_service_flow.dart';
-import 'package:repair_service_ui/utils/enum/api_request_status.dart';
 import 'package:repair_service_ui/utils/functions.dart';
 import 'package:repair_service_ui/utils/helper.dart';
 import 'package:repair_service_ui/utils/session.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_select/smart_select.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:repair_service_ui/actions/api.dart';
@@ -56,7 +57,9 @@ class _HomePageTwoState extends State<HomePageTwo> {
   bool passengerError = false;
   String active = "";
   bool routeIsLoaded = false;
+  bool isSubmitting = false;
   dynamic defaultRoute;
+  final box = GetStorage();
 
   @override
   void initState() {
@@ -66,8 +69,57 @@ class _HomePageTwoState extends State<HomePageTwo> {
     });
   }
 
+  Future refreshSchedule() async {
+    if (selectedSchedule != null && _schedule.text != null) {
+      setState(() {
+        scheduleIsLoading = true;
+      });
+      await Api.getSchedule(selectedSchedule.scheduleNo).then((value) {
+        if (value != null && value.scheduleNo == selectedSchedule.scheduleNo) {
+          setState(() {
+            selectedSchedule = value;
+            scheduleIsLoading = false;
+          });
+        }
+      });
+    }
+  }
+
+  Future fetchSchedules() async {
+    if (_route.text.isNotEmpty && _travelDate.text.isNotEmpty) {
+      setState(() {
+        scheduleIsEnabled = false;
+        scheduleIsLoading = true;
+        _schedule..text = '';
+      });
+
+      scheduleResponse =
+          await Api.fetchSchedules(_travelDate.text, _route.text);
+
+      if (scheduleResponse != null) {
+        setState(() {
+          schedules = scheduleResponse
+              .map((item) =>
+                  S2Choice<String>(value: item.scheduleNo, title: item.name))
+              .toList();
+          scheduleIsEnabled = true;
+          scheduleIsLoading = false;
+        });
+      }
+    }
+  }
+
   Future<dynamic> _initializeProcess() async {
-    List<RouteModel> response = await Api.getRoutes();
+    dynamic storeRoutes = box.read('routes');
+    List<RouteModel> response;
+    if (storeRoutes == null) {
+      response = await Api.getRoutes();
+    } else {
+      List data = json.decode(storeRoutes);
+      response = data
+          .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
     if (response != null) {
       defaultRoute = await Session().get('default_route');
       setState(() {
@@ -84,9 +136,7 @@ class _HomePageTwoState extends State<HomePageTwo> {
             .toList();
       });
 
-      if (_route.text.isNotEmpty != null && _travelDate.text.isNotEmpty) {
-        await fetchSchedules();
-      }
+      await fetchSchedules();
     }
   }
 
@@ -95,18 +145,22 @@ class _HomePageTwoState extends State<HomePageTwo> {
     return Consumer(builder:
         (BuildContext context, SettingProvider provider, Widget child) {
       Size size = MediaQuery.of(context).size;
-      return Container(
-        width: size.width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Expanded(
-              child: buildStepWizard(context),
+      return LoadingOverlay(
+          color: Colors.redAccent.withOpacity(0.8),
+          progressIndicator: SpinKitRing(color: Colors.white, size: 50.0),
+          isLoading: scheduleIsLoading || isSubmitting,
+          child: Container(
+            width: size.width,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: buildStepWizard(context),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
+          ));
     });
   }
 
@@ -137,12 +191,16 @@ class _HomePageTwoState extends State<HomePageTwo> {
         subtitle: selectedSchedule?.name,
         content: Column(
           children: [
-            Text('Unaweza kuchagua mpaka viti 20 ',
-                textAlign: TextAlign.center),
-            SizedBox(height: 10),
+            SizedBox(height: 5),
+            Text(
+              selectedSchedule?.seatLayout ?? ' ',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20),
+            ),
+            SizedBox(height: 20),
             selectedSchedule != null
                 ? _renderBusSeats(selectedSchedule)
-                : SizedBox(height: 10)
+                : SizedBox(height: 10),
           ],
         ),
         validation: () {
@@ -259,8 +317,10 @@ class _HomePageTwoState extends State<HomePageTwo> {
               controller: _rangePickerController,
               onSelectionChanged: (date) async {
                 if (date.value is DateTime) {
-                  _travelDate.text = DateFormat('yyyy-MM-dd')
-                      .format(_rangePickerController.selectedDate);
+                  setState(() {
+                    _travelDate.text = DateFormat('yyyy-MM-dd')
+                        .format(_rangePickerController.selectedDate);
+                  });
                   await fetchSchedules();
                 }
               })),
@@ -273,11 +333,10 @@ class _HomePageTwoState extends State<HomePageTwo> {
               choiceItems: choices,
               choiceDivider: true,
               onChange: (selected) async {
-                _route = TextEditingController(text: selected.value);
                 setState(() {
-                  selectedRoute = routes
-                      .firstWhere((element) => element.id == selected.value);
+                  _route = TextEditingController(text: selected.value);
                 });
+
                 await fetchSchedules();
               },
               // modalType: S2ModalType.bottomSheet,
@@ -292,7 +351,7 @@ class _HomePageTwoState extends State<HomePageTwo> {
                       const Icon(Icons.map, size: 40, color: Colors.redAccent),
                 );
               },
-              value: selectedRoute != null ? selectedRoute.id.toString() : null,
+              value: _route.text,
             )
           : SizedBox(),
       Divider(height: 0),
@@ -300,31 +359,29 @@ class _HomePageTwoState extends State<HomePageTwo> {
           ? SmartSelect.single(
               placeholder: 'Chagua ratiba ya basi',
               title: 'RATIBA YA BASI',
-              //selectedValue: _os,
               choiceItems: schedules,
               onChange: (selected) async {
-                _schedule = TextEditingController(text: selected.value);
                 ScheduleModel _currentSchedule = scheduleResponse.firstWhere(
                     (element) => element.scheduleNo == selected.value);
-
+                List<S2Choice<String>> _boardingPoints;
+                List<S2Choice<String>> _droppingPoints;
                 if (_currentSchedule.boardingPoints != null) {
-                  boardingPoints = _currentSchedule.boardingPoints
+                  _boardingPoints = _currentSchedule.boardingPoints
                       .map((item) =>
                           S2Choice<String>(value: item.id, title: item.name))
                       .toList();
                 }
-
                 if (_currentSchedule.droppingPoints != null) {
-                  droppingPoints = _currentSchedule.droppingPoints
+                  _droppingPoints = _currentSchedule.droppingPoints
                       .map((item) =>
                           S2Choice<String>(value: item.id, title: item.name))
                       .toList();
                 }
-
                 setState(() {
+                  _schedule = TextEditingController(text: selected.value);
                   selectedSeats = [];
-                  boardingPoints = boardingPoints;
-                  droppingPoints = droppingPoints;
+                  boardingPoints = _boardingPoints;
+                  droppingPoints = _droppingPoints;
                   selectedSchedule = _currentSchedule;
                 });
               },
@@ -497,30 +554,6 @@ class _HomePageTwoState extends State<HomePageTwo> {
     }
   }
 
-  Future fetchSchedules() async {
-    if (_route.text.isNotEmpty && _travelDate.text.isNotEmpty) {
-      setState(() {
-        scheduleIsEnabled = false;
-        scheduleIsLoading = true;
-        _schedule..text = '';
-      });
-
-      scheduleResponse =
-          await Api.fetchSchedules(_travelDate.text, _route.text);
-
-      if (scheduleResponse != null) {
-        setState(() {
-          schedules = scheduleResponse
-              .map((item) =>
-                  S2Choice<String>(value: item.scheduleNo, title: item.name))
-              .toList();
-          scheduleIsEnabled = true;
-          scheduleIsLoading = false;
-        });
-      }
-    }
-  }
-
   renderPassengerFields() {
     if (selectedSeats.length > 0) {
       return ListView.builder(
@@ -567,7 +600,7 @@ class _HomePageTwoState extends State<HomePageTwo> {
                                 fontWeight: FontWeight.w600, fontSize: 16)),
                       ),
                       decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: Colors.grey.shade300,
                           border: Border(
                               bottom: BorderSide(color: Colors.grey.shade300))),
                     ),
@@ -907,21 +940,34 @@ class _HomePageTwoState extends State<HomePageTwo> {
 
   Future submit(bool printTicket) async {
     EasyLoading.show(status: 'Inawasilisha...', dismissOnTap: true);
+    setState(() {
+      isSubmitting = true;
+    });
     dynamic response =
         await Api.createBooking(selectedSchedule, passengers, selectedMethod);
     if (response is List<BookingModel>) {
       if (printTicket) {
         response.forEach((e) async {
           EasyLoading.show(status: 'Printing tiketi');
-          await Functions.printTicket(context, e.ticketNo);
+          await Functions.printTicket(context, e.ticketNo).whenComplete(() {
+            setState(() {
+              isSubmitting = false;
+            });
+            Helper.nextPage(context, RequestServiceFlow());
+          });
           EasyLoading.dismiss();
-
-          Helper.nextPage(context, RequestServiceFlow());
         });
       } else {
         Helper.nextPage(context, RequestServiceFlow());
       }
+    } else {
+      Fluttertoast.showToast(
+        msg: 'Tafadhali, hakiki kamma tiketi imerudi',
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        toastLength: Toast.LENGTH_LONG,
+      );
+      EasyLoading.dismiss();
     }
-    EasyLoading.dismiss();
   }
 }

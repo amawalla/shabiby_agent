@@ -1,16 +1,18 @@
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:provider/provider.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:repair_service_ui/actions/api.dart';
 import 'package:repair_service_ui/models/model.dart';
+import 'package:repair_service_ui/pages/booking/booking.dart';
+import 'package:repair_service_ui/pages/setting/bluetooth/print_helper.dart';
 import 'package:repair_service_ui/utils/functions.dart';
-import 'package:repair_service_ui/utils/helper.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:skeletons/skeletons.dart';
+
+import '../setting/bluetooth/bluetooth.dart';
 
 class ScheduleShowPage extends StatefulWidget {
   ScheduleShowPage({Key key, this.schedule}) : super(key: key);
@@ -29,6 +31,7 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
   List<BookingModel> selectedBookings;
   List<bool> isSelected = [];
   bool isAllChecked = false;
+  final box = GetStorage();
 
   @override
   void initState() {
@@ -73,11 +76,12 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
+          centerTitle: true,
           toolbarHeight: 80,
           backgroundColor: Colors.redAccent,
           elevation: 4.0,
           title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(widget.schedule.route,
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
@@ -116,7 +120,23 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
                     icon: Icon(Icons.more_vert, color: Colors.white),
                     onPressed: () => showMultiSelectionMenu(context),
                   )
-                : SizedBox()
+                : InkWell(
+                    onTap: () =>
+                        Functions.pushPage(context, BluetoothSetting()),
+                    child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: box.read('bluetooth_device_connected') != null
+                            ? Icon(
+                                Icons.bluetooth,
+                                color: Colors.redAccent.shade100,
+                                size: 28,
+                              )
+                            : Icon(
+                                Icons.bluetooth_disabled,
+                                color: Colors.white70,
+                                size: 28,
+                              )),
+                  )
           ],
         ),
         body: Container(
@@ -155,48 +175,26 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
                   ' )'),
               onPressed: (context) async {
                 if (isSelected != null && bookings != null) {
+                  List<BookingModel> selectedBookings = [];
                   for (var i = 0;
                       i < isSelected.where((e) => e == true).length;
                       i++) {
-                    BookingModel bookingModal = bookings[i];
-                    EasyLoading.show(
-                        status: 'Printing Tiketi ' +
-                            bookingModal.ticketNo.toString(),
-                        dismissOnTap: true);
-                    await Functions.printTicket(context, bookingModal.ticketNo);
-                    print(bookingModal.ticketNo);
+                    selectedBookings.add(bookings[i]);
                   }
+                  await Future.forEach(selectedBookings, (element) async {
+                    print('Printing ' + element.ticketNo);
+                    EasyLoading.show(
+                        status:
+                            'Inachapisha Tiketi ' + element.ticketNo.toString(),
+                        dismissOnTap: true);
+                    await Functions.printTicket(
+                        context, element.ticketNo, true);
+                  }).whenComplete(() async {
+                    await BluetoothPrinter().disconnectPrinter();
+                  });
                 }
-
                 EasyLoading.dismiss();
               }),
-          BottomSheetAction(
-              title: Text('Chapa Tiketi ( ' +
-                  (isSelected != null
-                          ? isSelected
-                              .where((element) => element == true)
-                              .length
-                          : 0)
-                      .toString() +
-                  ' ) - Bluetooth'),
-              onPressed: (context) async {
-                if (isSelected != null && bookings != null) {
-                  for (var i = 0;
-                      i < isSelected.where((e) => e == true).length;
-                      i++) {
-                    BookingModel bookingModal = bookings[i];
-                    EasyLoading.show(
-                        status: 'Printing Tiketi ' +
-                            bookingModal.ticketNo.toString(),
-                        dismissOnTap: true);
-                    await Functions.printTicketBluetooth(
-                        context, bookingModal.ticketNo);
-                    print(bookingModal.ticketNo);
-                  }
-                }
-
-                EasyLoading.dismiss();
-              })
         ],
         cancelAction: CancelAction(
             title: Text('SITISHA'),
@@ -233,37 +231,21 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
       isDismissible: true,
       actions: <BottomSheetAction>[
         BottomSheetAction(
-            title: const Text('Badili Siti'),
+            title: const Text('Onesha Ticket'),
             onPressed: (context) async {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Itakuja hivi punde')),
-              );
-            }),
-        BottomSheetAction(
-            title: const Text('Piga Simu'),
-            onPressed: (context) async {
-              await Helper.launchURL('tel:' + booking.phone);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(booking.phone)),
-              );
+              await Functions.pushPage(context, BookingShow(booking: booking));
             }),
         BottomSheetAction(
             title: const Text('Chapa Tiketi'),
             onPressed: (context) async {
               EasyLoading.show(
-                  status: 'Printing Tiketi ' + booking.ticketNo.toString(),
+                  status: 'Inachapa Tiketi ' + booking.ticketNo.toString(),
                   dismissOnTap: true);
-              await Functions.printTicket(context, booking.ticketNo);
-              EasyLoading.dismiss();
-            }),
-        BottomSheetAction(
-            title: const Text('Chapa Tiketi ( Bluetooth )'),
-            onPressed: (context) async {
-              EasyLoading.show(
-                  status: 'Printing Tiketi ' + booking.ticketNo.toString(),
-                  dismissOnTap: true);
-              await Functions.printTicketBluetooth(context, booking.ticketNo);
-              EasyLoading.dismiss();
+
+              await Functions.printTicket(context, booking.ticketNo)
+                  .then((value) {
+                EasyLoading.dismiss();
+              });
             }),
         BottomSheetAction(
             title: const Text('Tuma / Share'),
@@ -286,7 +268,8 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
         onLoading: _onLoading,
         enablePullDown: true,
         enablePullUp: false,
-        header: MaterialClassicHeader(),
+        header: MaterialClassicHeader(
+            color: Colors.white, backgroundColor: Colors.redAccent),
         child: bookings == null || bookings.isEmpty
             ? EmptyWidget(
                 hideBackgroundAnimation: true,
@@ -301,7 +284,7 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
                     .caption
                     .copyWith(color: Colors.black87),
                 title: 'Hakuna Tiketi',
-                subTitle: 'Tafadhali reload au tafuta ratiba nyingine',
+                subTitle: 'Tafadhali tafuta ratiba nyingine',
               )
             : ListView.separated(
                 separatorBuilder: (BuildContext context, int index) =>
@@ -334,7 +317,7 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
                                   height: 60,
                                   width: 60,
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.shade300,
+                                    color: booking.statusColor,
                                     borderRadius: BorderRadius.circular(10),
                                     boxShadow: [
                                       BoxShadow(
@@ -351,7 +334,8 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
                                     booking.seatNo,
                                     style: TextStyle(
                                         fontSize: 23,
-                                        fontWeight: FontWeight.w600),
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white),
                                   )),
                                 )),
                       dense: true,
@@ -380,13 +364,21 @@ class _ScheduleShowPageState extends State<ScheduleShowPage> {
                             SizedBox(
                               height: 2,
                             ),
-                            Text('Kituo cha kupandia:  ' +
-                                booking.boardingPoint),
-                            SizedBox(
-                              height: 2,
-                            ),
-                            Text(
-                                'Kituo cha kushukia:  ' + booking.droppingPoint)
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                      text: 'TSh ' + booking.totalAmount + '/=',
+                                      style: TextStyle(color: Colors.black87)),
+                                  TextSpan(
+                                      text: booking.boardingPoint != null
+                                          ? ' | '
+                                          : ' '),
+                                  TextSpan(text: booking.boardingPoint ?? ' '),
+                                ],
+                              ),
+                              style: TextStyle(fontSize: 14),
+                            )
                           ]),
                       trailing: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

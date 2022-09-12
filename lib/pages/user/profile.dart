@@ -1,13 +1,18 @@
 //import 'dart:html';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:repair_service_ui/actions/api.dart';
 import 'package:repair_service_ui/models/model.dart';
+import 'package:repair_service_ui/pages/setting.dart';
+import 'package:repair_service_ui/pages/user/booking.dart';
+import 'package:repair_service_ui/utils/functions.dart';
 
 import '../../utils/auth.dart';
+import '../../utils/constants.dart';
 
 class Profile extends StatefulWidget {
   @override
@@ -48,6 +53,32 @@ class _ProfileState extends State<Profile> {
         appBar: AppBar(
           elevation: 0,
           backgroundColor: Colors.redAccent,
+          actions: [
+            PopupMenuButton(itemBuilder: (context) {
+              return [
+                PopupMenuItem<int>(
+                  value: 0,
+                  child: Text("Tiketi zangu"),
+                ),
+                PopupMenuItem<int>(
+                  value: 1,
+                  child: Text("Mipangilio"),
+                ),
+                PopupMenuItem<int>(
+                  value: 2,
+                  child: Text("Ondoka"),
+                ),
+              ];
+            }, onSelected: (value) {
+              if (value == 0) {
+                return Functions.pushPage(context, UserBookingPage());
+              } else if (value == 1) {
+                return Functions.pushPage(context, Setting());
+              } else if (value == 2) {
+                return showSignOut(context, auth);
+              }
+            }),
+          ],
         ),
         body: Stack(
           children: [
@@ -133,7 +164,7 @@ class _ProfileState extends State<Profile> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                "Jina lako",
+                                                "Jina",
                                                 style: TextStyle(
                                                     fontSize: 15.0,
                                                     color:
@@ -392,5 +423,45 @@ class _ProfileState extends State<Profile> {
         ),
       );
     });
+  }
+
+  showSignOut(BuildContext context, AuthProvider auth) {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: Text(
+            'TOA AKAUNTI',
+            style: TextStyle(
+                color: Constants.primaryColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w600),
+          ),
+          content: Text(
+            'Ungependa kutoa akaunti .?',
+          ),
+          actions: <Widget>[
+            FlatButton(
+              textColor: Theme.of(context).accentColor,
+              onPressed: () => Navigator.pop(context),
+              child: Text('Hapana',
+                  style: TextStyle(
+                      color: Constants.primaryColor,
+                      fontWeight: FontWeight.w600)),
+            ),
+            FlatButton(
+              textColor: Colors.red,
+              onPressed: () async {
+                await auth.logout();
+                Phoenix.rebirth(context);
+              }, // Go to login
+              child: Text('Ndio',
+                  style: TextStyle(
+                      color: Constants.redColor, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

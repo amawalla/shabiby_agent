@@ -1,15 +1,15 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:repair_service_ui/models/model.dart';
 import 'package:repair_service_ui/pages/setting/bluetooth/print_helper.dart';
 import 'package:repair_service_ui/utils/constants.dart';
-import 'package:sunmi_printer_plus/enums.dart';
-import 'package:sunmi_printer_plus/sunmi_printer_plus.dart';
+import 'package:flutter_sunmi_printer/flutter_sunmi_printer.dart' as sm;
 
 class Functions {
   static Future pushPage(BuildContext context, Widget page) {
@@ -25,33 +25,30 @@ class Functions {
     return val;
   }
 
-  static Future printTicket(BuildContext context, ticket) async {
+  static Future printTicket(BuildContext context, ticket,
+      [bool isBatch]) async {
     try {
-      // await SunmiPrinter.bindingPrinter();
-      Uint8List byte = (await NetworkAssetBundle(Uri.parse(Constants.baseURL +
-                  'bookings/' +
-                  ticket.toString() +
-                  '/download'))
-              .load(Constants.baseURL +
-                  'bookings/' +
-                  ticket.toString() +
-                  '/download'))
-          .buffer
-          .asUint8List();
+      final box = GetStorage();
 
-      print('Printing Ticket ' + ticket.toString());
-      await SunmiPrinter.startTransactionPrint(true);
-      await SunmiPrinter.printImage(byte);
-      await SunmiPrinter.submitTransactionPrint();
-      await SunmiPrinter.exitTransactionPrint(true); // Close the transaction
-
-      //  await SunmiPrinter.unbindingPrinter();
+      if (box.read('is_printer') != true) {
+        return await printTicketBluetooth(context, ticket, isBatch);
+      }
+      final response = await http.get(Uri.parse(
+          Constants.baseURL + 'bookings/' + ticket.toString() + '/download'));
+      if (response.statusCode == 200) {
+        print('Printing Ticket ' + ticket.toString());
+        await sm.SunmiPrinter.image(
+            base64.encode(Uint8List.view(response.bodyBytes.buffer)));
+      } else {
+        print(response.statusCode);
+        print('Sunmi imekataa');
+      }
     } catch (e) {
       Fluttertoast.showToast(
         msg: 'Imeshindikana kuchapisha tiketi  ' +
             ticket.toString() +
             ', tafadhali jaribu tena',
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.brown.shade900,
         textColor: Colors.white,
         toastLength: Toast.LENGTH_LONG,
       );
@@ -60,29 +57,22 @@ class Functions {
     }
   }
 
-  static Future printTicketBluetooth(BuildContext context, ticket) async {
+  static Future printTicketBluetooth(BuildContext context, ticket,
+      [bool isBatch]) async {
     try {
-      // await SunmiPrinter.bindingPrinter();
-      Uint8List byte = (await NetworkAssetBundle(Uri.parse(Constants.baseURL +
-                  'bookings/' +
-                  ticket.toString() +
-                  '/download'))
-              .load(Constants.baseURL +
-                  'bookings/' +
-                  ticket.toString() +
-                  '/download'))
-          .buffer
-          .asUint8List();
+      final response = await http.get(Uri.parse(
+          Constants.baseURL + 'bookings/' + ticket.toString() + '/download'));
 
-      print('Printing Ticket ' + ticket.toString());
-      await BluetoothPrinter().printImageByte(byte);
-      //  await SunmiPrinter.unbindingPrinter();
+      if (response.statusCode == 200) {
+        print('Printing Ticket ' + ticket.toString());
+        await BluetoothPrinter().printImageByte(response.bodyBytes, isBatch);
+      }
     } catch (e) {
       Fluttertoast.showToast(
         msg: 'Imeshindikana kuchapisha tiketi  ' +
             ticket.toString() +
             ', tafadhali jaribu tena',
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.brown.shade900,
         textColor: Colors.white,
         toastLength: Toast.LENGTH_LONG,
       );
@@ -91,27 +81,24 @@ class Functions {
     }
   }
 
-  static Future batchPrintTickets(
-      BuildContext context, ScheduleModel scheduleModel) async {
+  static Future batchPrintBookings(
+      BuildContext context, List<BookingModel> bookings) async {
+    final box = GetStorage();
+    if (box.read('is_printer') != true) {
+      return await batchPrintBookingsViaBluetoth(context, bookings);
+    }
     try {
-      Uint8List byte = (await NetworkAssetBundle(Uri.parse(Constants.baseURL +
-                  'bookings/batch_download?schedule=' +
-                  scheduleModel.scheduleNo))
-              .load(Constants.baseURL +
-                  'bookings/batch_download?schedule=' +
-                  scheduleModel.scheduleNo))
-          .buffer
-          .asUint8List();
-
-      print('Printing Ticket');
-      await SunmiPrinter.startTransactionPrint(true);
-      await SunmiPrinter.printImage(byte);
-      await SunmiPrinter.submitTransactionPrint();
-      await SunmiPrinter.exitTransactionPrint(true); // Close the transaction
+      await Future.forEach(bookings, (element) async {
+        print('Printing ' + element.ticketNo);
+        EasyLoading.show(
+            status: 'Inachapisha Tiketi ' + element.ticketNo,
+            dismissOnTap: true);
+        await Functions.printTicket(context, element.ticketNo);
+      });
     } catch (e) {
       Fluttertoast.showToast(
         msg: 'Imeshindikana kuchapisha tiketi, tafadhali jaribu tena',
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.brown.shade900,
         textColor: Colors.white,
         toastLength: Toast.LENGTH_LONG,
       );
@@ -119,24 +106,23 @@ class Functions {
     }
   }
 
-  static Future batchPrintTicketsViaBluetoth(
-      BuildContext context, ScheduleModel scheduleModel) async {
+  static Future batchPrintBookingsViaBluetoth(
+      BuildContext context, List<BookingModel> bookings) async {
     try {
-      Uint8List byte = (await NetworkAssetBundle(Uri.parse(Constants.baseURL +
-                  'bookings/batch_download?schedule=' +
-                  scheduleModel.scheduleNo))
-              .load(Constants.baseURL +
-                  'bookings/batch_download?schedule=' +
-                  scheduleModel.scheduleNo))
-          .buffer
-          .asUint8List();
-
-      print('Printing Tickets');
-      await BluetoothPrinter().printImageByte(byte);
+      await Future.forEach(bookings, (element) async {
+        print('Printing ' + element.ticketNo);
+        EasyLoading.show(
+            status: 'Inachapisha Tiketi ' + element.ticketNo,
+            dismissOnTap: true);
+        await Functions.printTicket(context, element.ticketNo, true);
+      }).whenComplete(() async {
+        await BluetoothPrinter().disconnectPrinter();
+      });
+      EasyLoading.dismiss();
     } catch (e) {
       Fluttertoast.showToast(
         msg: 'Imeshindikana kuchapisha tiketi, tafadhali jaribu tena',
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.brown.shade900,
         textColor: Colors.white,
         toastLength: Toast.LENGTH_LONG,
       );
@@ -146,28 +132,26 @@ class Functions {
 
   static Future printSeatPlan(
       BuildContext context, ScheduleModel scheduleModel) async {
+    final box = GetStorage();
+    if (box.read('is_printer') != true) {
+      return await printSeatPlanBluetooth(context, scheduleModel);
+    }
     try {
-      Uint8List byte = (await NetworkAssetBundle(Uri.parse(Constants.baseURL +
-                  'schedules/' +
-                  scheduleModel.scheduleNo +
-                  '/manifest'))
-              .load(Constants.baseURL +
-                  'schedules/' +
-                  scheduleModel.scheduleNo +
-                  '/manifest'))
-          .buffer
-          .asUint8List();
+      final response = await http.get(Uri.parse(Constants.baseURL +
+          'schedules/' +
+          scheduleModel.scheduleNo +
+          '/manifest'));
 
-      print('Printing Schedule Manifesto');
-      await SunmiPrinter.startTransactionPrint(true);
-      await SunmiPrinter.printImage(byte);
-      await SunmiPrinter.submitTransactionPrint();
-      await SunmiPrinter.exitTransactionPrint(true); // Close the transaction
-
+      if (response.statusCode == 200) {
+        print('Found ticket');
+        print('Printing Schedule Manifesto');
+        await sm.SunmiPrinter.image(
+            base64.encode(Uint8List.view(response.bodyBytes.buffer)));
+      }
     } catch (e) {
       Fluttertoast.showToast(
         msg: 'Imeshindikana kuchapisha manifesto, tafadhali jaribu tena',
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.brown.shade900,
         textColor: Colors.white,
         toastLength: Toast.LENGTH_LONG,
       );
@@ -178,25 +162,19 @@ class Functions {
   static Future printSeatPlanBluetooth(
       BuildContext context, ScheduleModel scheduleModel) async {
     try {
-      // await SunmiPrinter.bindingPrinter();
-      Uint8List byte = (await NetworkAssetBundle(Uri.parse(Constants.baseURL +
-                  'schedules/' +
-                  scheduleModel.scheduleNo +
-                  '/manifest'))
-              .load(Constants.baseURL +
-                  'schedules/' +
-                  scheduleModel.scheduleNo +
-                  '/manifest'))
-          .buffer
-          .asUint8List();
-      print('Printing Tickets');
+      final response = await http.get(Uri.parse(Constants.baseURL +
+          'schedules/' +
+          scheduleModel.scheduleNo +
+          '/manifest'));
 
-      await BluetoothPrinter().printImageByte(byte);
-      //  await SunmiPrinter.unbindingPrinter();
+      if (response.statusCode == 200) {
+        print('Printing Tickets');
+        await BluetoothPrinter().printImageByte(response.bodyBytes);
+      }
     } catch (e) {
       Fluttertoast.showToast(
         msg: 'Imeshindikana kuchapisha manifesto, tafadhali jaribu tena',
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.brown.shade900,
         textColor: Colors.white,
         toastLength: Toast.LENGTH_LONG,
       );
@@ -227,6 +205,18 @@ class Functions {
           return page;
         },
       ),
+    );
+  }
+
+  static pushPageReplacementUntil(BuildContext context, Widget page) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (BuildContext context) {
+          return page;
+        },
+      ),
+      (Route<dynamic> route) => false,
     );
   }
 

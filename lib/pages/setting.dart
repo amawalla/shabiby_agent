@@ -3,7 +3,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:repair_service_ui/actions/api.dart';
@@ -32,7 +34,9 @@ class _SettingState extends State<Setting> {
   bool useNotificationDotOnAppIcon = true;
   RouteModel route;
   String selectedRoute;
+  String defaultPrinter;
   List<S2Choice<String>> routeChoices;
+  final box = GetStorage();
 
   @override
   void initState() {
@@ -48,8 +52,10 @@ class _SettingState extends State<Setting> {
 
   Future<dynamic> _initialize() async {
     String route = await Session().get('default_route_name');
+    String printer = box.read('bluettoth_device_name');
     setState(() {
       selectedRoute = route;
+      defaultPrinter = printer;
     });
   }
 
@@ -65,7 +71,7 @@ class _SettingState extends State<Setting> {
           ),
         ),
         body: SettingsList(
-          applicationType: ApplicationType.both,
+          applicationType: ApplicationType.material,
           platform: DevicePlatform.android,
           sections: [
             SettingsSection(
@@ -90,15 +96,10 @@ class _SettingState extends State<Setting> {
               tiles: [
                 SettingsTile(
                   title: Text('Bluetooth'),
+                  value: Text(defaultPrinter ?? 'Chagua printer ya kutumia'),
                   description: Text('Chagua printer ya kutumia'),
                   onPressed: (e) =>
                       Functions.pushPage(context, BluetoothSetting()),
-                ),
-                SettingsTile(
-                  title: Text('Thermal'),
-                  description: Text(
-                    'Boresha rangi, muonekano na ukubwa wa maneno',
-                  ),
                 ),
               ],
             ),
@@ -117,12 +118,43 @@ class _SettingState extends State<Setting> {
                   },
                 ),
                 SettingsTile(
-                  title: Text('Sign out'),
+                  title: Text('Ondoa Akaunti'),
                   description: Text('Ondoka kwenye applikesheni'),
                   onPressed: (e) async {
                     showSignOut(context, auth);
                   },
                 ),
+                SettingsTile(
+                    title: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Divider(
+                          height: 10,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        Text(
+                          'Shabiby Wakala - V1',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    description: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Divider(
+                          height: 0,
+                          color: Colors.transparent,
+                        ),
+                        Text('https://www.shabiby.co.tz'),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        Text('Powered By Msafiri'),
+                      ],
+                    )),
               ],
             ),
           ],
@@ -137,20 +169,20 @@ class _SettingState extends State<Setting> {
       builder: (_) {
         return AlertDialog(
           title: Text(
-            'SIGN OUT',
+            'TOA AKAUNTI',
             style: TextStyle(
                 color: Constants.primaryColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600),
           ),
           content: Text(
-            'Do you want to sign out .?',
+            'Ungependa kutoa akaunti .?',
           ),
           actions: <Widget>[
             FlatButton(
               textColor: Theme.of(context).accentColor,
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancel',
+              child: Text('Hapana',
                   style: TextStyle(
                       color: Constants.primaryColor,
                       fontWeight: FontWeight.w600)),
@@ -159,17 +191,9 @@ class _SettingState extends State<Setting> {
               textColor: Colors.red,
               onPressed: () async {
                 await auth.logout();
-
-                Navigator.pushAndRemoveUntil<dynamic>(
-                  context,
-                  MaterialPageRoute<dynamic>(
-                    builder: (BuildContext context) => Home(),
-                  ),
-                  (route) =>
-                      false, //if you want to disable back feature set to false
-                );
+                Phoenix.rebirth(context);
               }, // Go to login
-              child: Text('Confirm',
+              child: Text('Ndio',
                   style: TextStyle(
                       color: Constants.redColor, fontWeight: FontWeight.w600)),
             ),

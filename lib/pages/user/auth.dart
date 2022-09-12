@@ -1,4 +1,3 @@
-import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:flutter_svg/svg.dart';
@@ -6,18 +5,16 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../utils/auth.dart';
-import '../../utils/helper.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({Key key}) : super(key: key);
+class SignInPage extends StatefulWidget {
+  const SignInPage({Key key}) : super(key: key);
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<SignInPage> createState() => _SignInFiveState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _SignInFiveState extends State<SignInPage> {
   bool _isLoading = false;
-  bool _showPassword = true;
   TextEditingController _username = TextEditingController(text: '');
   TextEditingController _password = TextEditingController(text: '');
 
@@ -77,7 +74,7 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(
                                 height: 20,
                               ),
-                              usernameTextField(size),
+                              emailTextField(size),
                               const SizedBox(
                                 height: 8,
                               ),
@@ -85,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(
                                 height: 20,
                               ),
-                              buildForgetSection(),
+                              buildRememberForgetSection(),
                               const SizedBox(
                                 height: 16,
                               ),
@@ -146,7 +143,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget usernameTextField(Size size) {
+  Widget emailTextField(Size size) {
     return Container(
       alignment: Alignment.center,
       height: size.height / 12,
@@ -161,7 +158,7 @@ class _LoginPageState extends State<LoginPage> {
           children: <Widget>[
             //mail icon
             const Icon(
-              Icons.person,
+              Icons.mail_rounded,
               color: Colors.white70,
             ),
             const SizedBox(
@@ -186,14 +183,14 @@ class _LoginPageState extends State<LoginPage> {
                 cursorColor: Colors.white70,
                 keyboardType: TextInputType.emailAddress,
                 style: TextStyle(
-                  fontSize: 18.0,
+                  fontSize: 15.0,
                   color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
                 decoration: InputDecoration(
                     hintText: 'Namba ya simu au barua pepe',
                     hintStyle: TextStyle(
-                      fontSize: 18.0,
+                      fontSize: 15.0,
                       color: Colors.white70,
                       fontWeight: FontWeight.w500,
                     ),
@@ -209,21 +206,21 @@ class _LoginPageState extends State<LoginPage> {
   Widget buildFooter(Size size) {
     return Align(
       alignment: Alignment.center,
-      child: InkWell(
-        onTap: () => Helper.launchURL('https://msafiri.co.tz'),
-        highlightColor: Colors.transparent,
-        splashColor: Colors.transparent,
-        child: Container(
-          padding: EdgeInsets.only(top: 6, bottom: 4),
-          alignment: Alignment.center,
-          child: Text(
-            "Powered by Msafiri",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontFamily: 'narrowmedium',
-            ),
+      child: Text.rich(
+        TextSpan(
+          style: TextStyle(
+            fontSize: 15.0,
+            color: Colors.white,
           ),
+          children: [
+            TextSpan(
+              text: 'Powered by Logitek Solutions',
+              style: TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -268,31 +265,22 @@ class _LoginPageState extends State<LoginPage> {
                 maxLines: 1,
                 cursorColor: Colors.white70,
                 keyboardType: TextInputType.visiblePassword,
-                obscureText: _showPassword,
+                obscureText: true,
                 style: TextStyle(
-                  fontSize: 18.0,
+                  fontSize: 15.0,
                   color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
                 decoration: InputDecoration(
-                    hintText: 'Namba ya siri',
+                    hintText: 'Ingiza namba ya siri',
                     hintStyle: TextStyle(
-                      fontSize: 18.0,
+                      fontSize: 15.0,
                       color: Colors.white70,
                       fontWeight: FontWeight.w500,
                     ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        // Based on passwordVisible state choose the icon
-                        _showPassword ? Icons.visibility : Icons.visibility_off,
-                        color: Colors.white70,
-                      ),
-                      onPressed: () {
-                        // Update the state i.e. toogle the state of passwordVisible variable
-                        setState(() {
-                          _showPassword = !_showPassword;
-                        });
-                      },
+                    suffixIcon: const Icon(
+                      Icons.visibility,
+                      color: Colors.white70,
                     ),
                     border: InputBorder.none),
               ),
@@ -303,25 +291,20 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget buildForgetSection() {
+  Widget buildRememberForgetSection() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Row(
         children: [
           const Spacer(),
-          InkWell(
-            onTap: () =>
-                Helper.launchURL('https://shabiby.co.tz/dashboard/auth/forgot'),
-            highlightColor: Colors.transparent,
-            splashColor: Colors.transparent,
-            child: Text(
-              "Umesahau namba ya siri ?",
-              style: TextStyle(
-                fontSize: 15.0,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
+          Text(
+            'Nimesahau neno la siri',
+            style: TextStyle(
+              fontSize: 15.0,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.right,
           ),
         ],
       ),
@@ -338,10 +321,14 @@ class _LoginPageState extends State<LoginPage> {
             await attemptLogIn(_username.text, _password.text);
           } else {
             Fluttertoast.showToast(
-                msg: 'Tafadhali jaza namba ya simu na namba ya siri kuingia',
-                backgroundColor: Colors.brown.shade900,
-                textColor: Colors.white,
-                toastLength: Toast.LENGTH_LONG);
+                msg:
+                    'Tafadhali jaza namba yako ya simu/email pamoja na password',
+                toastLength: Toast.LENGTH_LONG,
+                gravity: ToastGravity.BOTTOM,
+                timeInSecForIosWeb: 1,
+                backgroundColor: Colors.white,
+                textColor: Colors.redAccent,
+                fontSize: 16.0);
           }
         },
         child: Container(
@@ -357,18 +344,17 @@ class _LoginPageState extends State<LoginPage> {
                   height: 20,
                   child: CircularProgressIndicator(color: Colors.redAccent))
               : Text(
-                  'INGIA',
+                  'Ingia',
                   style: TextStyle(
-                    letterSpacing: 2,
-                    fontSize: 18.0,
+                    fontSize: 17.0,
                     color: Colors.redAccent,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
         ));
   }
 
-  Future<dynamic> attemptLogIn(String username, String password) async {
+  Future<bool> attemptLogIn(String username, String password) async {
     try {
       bool response = await AuthProvider.login(username, password);
       if (response) {

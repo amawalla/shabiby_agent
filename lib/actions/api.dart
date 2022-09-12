@@ -1,11 +1,15 @@
 // ignore_for_file: missing_return
 import 'dart:convert';
 import 'dart:io';
+import 'package:another_flushbar/flushbar.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:intl/intl.dart';
 import 'package:repair_service_ui/models/model.dart';
 import 'package:repair_service_ui/utils/constants.dart';
+import 'package:repair_service_ui/utils/functions.dart';
+import 'package:repair_service_ui/utils/helper.dart';
 import '../utils/session.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 
@@ -13,9 +17,11 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 
 var options = BaseOptions(
     baseUrl: Constants.baseURL,
+    followRedirects: true,
     receiveDataWhenStatusError: true,
-    connectTimeout: 60 * 1000, // 60 seconds
-    receiveTimeout: 60 * 1000 // 60 seconds
+    connectTimeout: 60 * 3000,
+    // 60 seconds
+    receiveTimeout: 60 * 3000 // 60 seconds
     );
 
 // Global options
@@ -60,9 +66,8 @@ class Api {
         // then parse the JSON.
         return data.map((e) => ScheduleModel.fromJson(e)).toList();
       }
-    } on DioError catch (e) {
-      return responseData;
     } catch (e) {
+      Helper.handleDioError(e);
       return responseData;
     }
   }
@@ -93,13 +98,7 @@ class Api {
       return responseData;
     } catch (e) {
       print(e);
-
-      Fluttertoast.showToast(
-        msg: e.toString(),
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        toastLength: Toast.LENGTH_LONG,
-      );
+      Helper.handleDioError(e);
       return responseData;
     }
   }
@@ -129,6 +128,37 @@ class Api {
         return data.map((e) => BookingModel.fromJson(e)).toList();
       }
     } catch (e) {
+      Helper.handleDioError(e);
+      return responseData;
+    }
+  }
+
+  static Future<List<BookingModel>> getUserBookings(DateTime date) async {
+    List<BookingModel> responseData;
+    try {
+      var res = await dio
+          .get(
+        'profile/bookings',
+        queryParameters: {'date': DateFormat.yMMMd().format(date)},
+        options: Options(
+          headers: {
+            HttpHeaders.authorizationHeader:
+                "Bearer " + await Session().get('access_token'),
+          },
+        ),
+      )
+          .catchError((e) {
+        print(e);
+      });
+
+      if (res.statusCode == 200) {
+        List data = res.data;
+        // If the server did return a 200 OK response,
+        // then parse the JSON.
+        return data.map((e) => BookingModel.fromJson(e)).toList();
+      }
+    } catch (e) {
+      Helper.handleDioError(e);
       return responseData;
     }
   }
@@ -136,24 +166,24 @@ class Api {
   static Future<List<RouteModel>> getRoutes() async {
     List<RouteModel> responseData;
     try {
-      var res = await dio
-          .get(
-            'schedules/routes',
-            options: Options(
-              headers: {
-                HttpHeaders.authorizationHeader:
-                    "Bearer " + await Session().get('access_token'),
-              },
-            ),
-          )
-          .catchError((e) {});
+      var res = await dio.get(
+        'schedules/routes',
+        options: Options(
+          headers: {
+            HttpHeaders.authorizationHeader:
+                "Bearer " + await Session().get('access_token'),
+          },
+        ),
+      );
       if (res.statusCode == 200) {
         List data = res.data;
         // If the server did return a 200 OK response,
         // then parse the JSON.
         return data.map((e) => RouteModel.fromJson(e)).toList();
       }
-    } catch (e) {}
+    } catch (e) {
+      Helper.handleDioError(e);
+    }
 
     return responseData;
   }
@@ -177,6 +207,7 @@ class Api {
         return res.data;
       }
     } catch (e) {
+      Helper.handleDioError(e);
       print(e);
     }
   }
@@ -186,7 +217,7 @@ class Api {
     try {
       var res = await dio
           .get(
-        'schedules/' + schedule,
+        'schedules/' + schedule + '/get',
         options: Options(
           headers: {
             HttpHeaders.authorizationHeader:
@@ -198,9 +229,10 @@ class Api {
         print(e);
       });
       if (res.statusCode == 200) {
-        return jsonDecode(res.data.toString());
+        return ScheduleModel.fromJson(res.data);
       }
     } catch (e) {
+      Helper.handleDioError(e);
       print(e);
     }
     return responseData;
@@ -226,6 +258,7 @@ class Api {
         return User.fromJson(res.data);
       }
     } catch (e) {
+      Helper.handleDioError(e);
       print(e);
     }
     return user;
@@ -234,24 +267,22 @@ class Api {
   static Future<BookingModel> getBooking(ticket) async {
     BookingModel responseData;
     try {
-      var res = await dio
-          .get(
-        'bookings/' + ticket,
+      var res = await dio.get(
+        'bookings/get/' + ticket,
         options: Options(
           headers: {
             HttpHeaders.authorizationHeader:
                 "Bearer " + await Session().get('access_token'),
           },
         ),
-      )
-          .catchError((e) {
-        print(e);
-      });
+      );
+
       if (res.statusCode == 200) {
         print('Found ticket');
         return BookingModel.fromJson(res.data);
       }
     } catch (e) {
+      Helper.handleDioError(e);
       print(e);
     }
     return responseData;
@@ -291,13 +322,7 @@ class Api {
       return responseData;
     } on DioError catch (e) {
       print(e);
-      Fluttertoast.showToast(
-        msg: e.response.data.toString(),
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        toastLength: Toast.LENGTH_LONG,
-      );
-
+      Helper.handleDioError(e);
       return responseData;
     } catch (e) {
       print(e);
@@ -320,7 +345,7 @@ class Api {
         return res.data;
       }
     } catch (e) {
-      print(e);
+      Helper.handleDioError(e);
     }
     return null;
   }

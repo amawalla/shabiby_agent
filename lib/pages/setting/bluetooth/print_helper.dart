@@ -1,123 +1,248 @@
 import 'dart:typed_data';
-import 'package:repair_service_ui/utils/session.dart';
-
-import 'printerenum.dart';
+import 'package:esc_pos_bluetooth/esc_pos_bluetooth.dart';
+import 'package:esc_pos_utils_plus/esc_pos_utils.dart';
+import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
+import '../../../utils/constants.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
-import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as Imag;
 
-///Test printing
 class BluetoothPrinter {
   BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
+  PrinterBluetoothManager printerManager = PrinterBluetoothManager();
   List<BluetoothDevice> _devices = [];
   BluetoothDevice _device;
+  bool _connected = false;
 
-  printSample() async {
+  bool get mounted => null;
+  final box = GetStorage();
+
+  Future printSample() async {
     //image max 300px X 300px
 
-    ///image from File path
-    String filename = 'yourlogo.png';
-    ByteData bytesData = await rootBundle.load("assets/images/msafiri02.png");
-    String dir = (await getApplicationDocumentsDirectory()).path;
-    File file = await File('$dir/$filename').writeAsBytes(bytesData.buffer
-        .asUint8List(bytesData.offsetInBytes, bytesData.lengthInBytes));
+    final response = await http
+        .get(Uri.parse(Constants.baseURL + 'bookings/914293075/download'));
 
-    ///image from Asset
-    ByteData bytesAsset = await rootBundle.load("assets/images/msafiri02.png");
-    Uint8List imageBytesFromAsset = bytesAsset.buffer
-        .asUint8List(bytesAsset.offsetInBytes, bytesAsset.lengthInBytes);
+    if (response.statusCode == 200) {
+      bluetooth.isConnected.then((isConnected) async {
+        if (isConnected == true) {
+          await bluetooth.paperCut();
+          await bluetooth.printImageBytes(response.bodyBytes);
+          //bluetooth.paperCut();
+          //  await bluetooth.drawerPin5();
+          await bluetooth.drawerPin2();
+        }
+      });
+    }
+  }
 
-    ///image from Network
-    var response = await http.get(Uri.parse(
-        "https://raw.githubusercontent.com/kakzaki/blue_thermal_printer/master/example/assets/images/yourlogo.png"));
-    Uint8List bytesNetwork = response.bodyBytes;
-    Uint8List imageBytesFromNetwork = bytesNetwork.buffer
-        .asUint8List(bytesNetwork.offsetInBytes, bytesNetwork.lengthInBytes);
+  Future<void> printSampleImage() async {
+    final response = await http
+        .get(Uri.parse(Constants.baseURL + 'bookings/914293075/download'));
 
-    bluetooth.isConnected.then((isConnected) {
-      if (isConnected == true) {
-        bluetooth.printNewLine();
-        bluetooth.printCustom("HEADER", Size.boldMedium.val, Align.center.val);
-        bluetooth.printNewLine();
-        bluetooth.printImage(file.path); //path of your image/logo
-        bluetooth.printNewLine();
-        bluetooth.printImageBytes(imageBytesFromAsset); //image from Asset
-        bluetooth.printNewLine();
-        bluetooth.printImageBytes(imageBytesFromNetwork); //image from Network
-        bluetooth.printNewLine();
-        bluetooth.printLeftRight("LEFT", "RIGHT", Size.medium.val);
-        bluetooth.printLeftRight("LEFT", "RIGHT", Size.bold.val);
-        bluetooth.printLeftRight("LEFT", "RIGHT", Size.bold.val,
-            format:
-                "%-15s %15s %n"); //15 is number off character from left or right
-        bluetooth.printNewLine();
-        bluetooth.printLeftRight("LEFT", "RIGHT", Size.boldMedium.val);
-        bluetooth.printLeftRight("LEFT", "RIGHT", Size.boldLarge.val);
-        bluetooth.printLeftRight("LEFT", "RIGHT", Size.extraLarge.val);
-        bluetooth.printNewLine();
-        bluetooth.print3Column("Col1", "Col2", "Col3", Size.bold.val);
-        bluetooth.print3Column("Col1", "Col2", "Col3", Size.bold.val,
-            format:
-                "%-10s %10s %10s %n"); //10 is number off character from left center and right
-        bluetooth.printNewLine();
-        bluetooth.print4Column("Col1", "Col2", "Col3", "Col4", Size.bold.val);
-        bluetooth.print4Column("Col1", "Col2", "Col3", "Col4", Size.bold.val,
-            format: "%-8s %7s %7s %7s %n");
-        bluetooth.printNewLine();
-        bluetooth.printCustom("čĆžŽšŠ-H-ščđ", Size.bold.val, Align.center.val,
-            charset: "windows-1250");
-        bluetooth.printLeftRight("Številka:", "18000001", Size.bold.val,
-            charset: "windows-1250");
-        bluetooth.printCustom("Body left", Size.bold.val, Align.left.val);
-        bluetooth.printCustom("Body right", Size.medium.val, Align.right.val);
-        bluetooth.printNewLine();
-        bluetooth.printCustom("Thank You", Size.bold.val, Align.center.val);
-        bluetooth.printNewLine();
-        bluetooth.printQRcode(
-            "Insert Your Own Text to Generate", 200, 200, Align.center.val);
-        bluetooth.printNewLine();
-        bluetooth.printNewLine();
-        bluetooth
-            .paperCut(); //some printer not supported (sometime making image not centered)
-        //bluetooth.drawerPin2(); // or you can use bluetooth.drawerPin5();
-      }
-    });
+    if (response.statusCode == 200) {
+      print('Printin sample');
+
+      await printImageByte(response.bodyBytes);
+    }
+  }
+
+  Future<void> connect() async {
+    final bool result = await PrintBluetoothThermal.connect(
+        macPrinterAddress: box.read('bluetooth_device'));
+    print("State conected $result");
   }
 
   checkIfConnected() async {
-    return await bluetooth.isConnected;
+    return bluetooth.isConnected;
   }
 
-  connectPrinter(BluetoothDevice device) async {
+  Future<bool> initializePrinter() async {
+    try {
+      List<BluetoothDevice> devices = await bluetooth.getBondedDevices();
+      if (devices != null) {
+        return await connectToDevice(devices);
+      }
+    } catch (e) {
+      print(e);
+      print('Printer no connected');
+      print('Configure printer to use ');
+    }
+
+    return false;
+  }
+
+  Future<bool> connectPrinter(BluetoothDevice device) async {
+    print('Connecting printer');
+    await GetStorage().write('bluetooth_device_connected', true);
+    await GetStorage().write('bluetooth_device', device.address);
+    await GetStorage().write('bluetooth_device_name', device.name);
     await bluetooth.connect(device);
+    return true;
   }
 
-  connectoDevice() async {
-    if (_devices.isNotEmpty) {
-      dynamic bDevice = await Session().get('bluetooth_device');
-      _devices.map((e) async {
-        if (bDevice == e.address) {
-          await connectPrinter(e);
-          _device = e;
-          return true;
-        }
-      });
+  Future disconnectPrinter() async {
+    await PrintBluetoothThermal.disconnect;
+  }
+
+  Future<bool> connectToDevice(List<BluetoothDevice> devices) async {
+    if (devices.isNotEmpty) {
+      try {
+        dynamic bDevice = await GetStorage().read('bluetooth_device');
+        print(bDevice);
+        bluetooth.isConnected.then((isConnected) async {
+          _device = bDevice != null
+              ? devices.firstWhere((element) => element.address == bDevice)
+              : _device;
+          if (_device != null) {
+            return await connectPrinter(_device);
+          }
+        });
+      } catch (e) {
+        print(e);
+      }
     }
     return false;
   }
 
-  printImageByte(Uint8List byte) async {
-    try {
-      await connectoDevice();
-      await bluetooth.connect(_device).then((isConnected) {
-        bluetooth.printImageBytes(byte);
-        bluetooth.printNewLine();
-        bluetooth.printNewLine();
-      });
-    } catch (e) {
-      print('Device is not connected');
+  printImageByte(Uint8List byte, [bool isBatch]) async {
+    print('Is Batch is {$isBatch}');
+    bool connectionStatus = await PrintBluetoothThermal.connectionStatus;
+    print("State conected 1 $connectionStatus");
+    if (!connectionStatus) {
+      String macAddess = box.read('bluetooth_device');
+      print(macAddess);
+      connectionStatus =
+          await PrintBluetoothThermal.connect(macPrinterAddress: macAddess);
+      print("State conected 2 $connectionStatus");
     }
+
+    if (connectionStatus) {
+      print("state conected 3 $connectionStatus");
+      List<int> bytes = [];
+      final profile = await CapabilityProfile.load();
+      final generator = Generator(PaperSize.mm72, profile);
+      bytes += generator.reset();
+      final Uint8List bytesImg = byte.buffer.asUint8List();
+      final image = Imag.decodeImage(bytesImg);
+      bytes += generator.image(image);
+      bytes += generator.cut();
+      await PrintBluetoothThermal.writeBytes(bytes);
+      if (isBatch != true) {
+        print('Checkick if its batch');
+        await PrintBluetoothThermal.disconnect;
+      }
+      return;
+    } else {
+      Fluttertoast.showToast(
+          msg: "Tafadhali unganisha kifaa kwanza kabla ya kuchapa tiketi",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.brown.shade900,
+          textColor: Colors.white,
+          fontSize: 16.0);
+      print("There's no connection");
+    }
+  }
+
+  printImageBatchByte(Uint8List byte) async {
+    bool blueToothEnabled =
+        await PrintBluetoothThermal.isPermissionBluetoothGranted &&
+            await PrintBluetoothThermal.isPermissionBluetoothGranted;
+
+    if (blueToothEnabled) {
+      bool connectionStatus = await PrintBluetoothThermal.connectionStatus;
+      print("State conected 1 $connectionStatus");
+      if (!connectionStatus) {
+        String macAddess = box.read('bluetooth_device');
+        print(macAddess);
+        connectionStatus =
+            await PrintBluetoothThermal.connect(macPrinterAddress: macAddess);
+        await Future.delayed(Duration(seconds: 1));
+        print("State conected 2 $connectionStatus");
+        // final r = RetryOptions(maxAttempts: 2);
+        // return await r.retry(printImageByte(byte));
+      }
+
+      if (connectionStatus) {
+        print("state conected 3 $connectionStatus");
+        List<int> bytes = [];
+        final profile = await CapabilityProfile.load();
+        final generator = Generator(PaperSize.mm72, profile);
+        bytes += generator.reset();
+        final Uint8List bytesImg = byte.buffer.asUint8List();
+        final image = Imag.decodeImage(bytesImg);
+        bytes += generator.image(image);
+        bytes += generator.cut();
+        await PrintBluetoothThermal.writeBytes(bytes);
+        return;
+      } else {
+        Fluttertoast.showToast(
+            msg: "Tafadhali unganisha kifaa kwanza kabla ya kuchapa tiketi",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.brown.shade900,
+            textColor: Colors.white,
+            fontSize: 16.0);
+
+        print("There's connection");
+      }
+    }
+  }
+
+  Future<void> initPlatformState() async {
+    List<BluetoothDevice> devices = [];
+    try {
+      devices = await bluetooth.getBondedDevices();
+    } on PlatformException {}
+
+    bluetooth.onStateChanged().listen((state) async {
+      switch (state) {
+        case BlueThermalPrinter.CONNECTED:
+          print("bluetooth device state: connected");
+          _connected = true;
+
+          break;
+        case BlueThermalPrinter.DISCONNECTED:
+          print("bluetooth device state: disconnected");
+          _connected = false;
+          break;
+        case BlueThermalPrinter.DISCONNECT_REQUESTED:
+          print("bluetooth device state: disconnect requested");
+          _connected = false;
+          break;
+        case BlueThermalPrinter.STATE_TURNING_OFF:
+          print("bluetooth device state: bluetooth turning off");
+          _connected = false;
+          break;
+        case BlueThermalPrinter.STATE_OFF:
+          print("bluetooth device state: bluetooth off");
+          _connected = false;
+          break;
+        case BlueThermalPrinter.STATE_ON:
+          print("bluetooth device state: bluetooth on");
+          _connected = false;
+          break;
+        case BlueThermalPrinter.STATE_TURNING_ON:
+          print("bluetooth device state: bluetooth turning on");
+          _connected = true;
+          break;
+        case BlueThermalPrinter.ERROR:
+          print("bluetooth device state: error");
+          _connected = false;
+          break;
+        default:
+          break;
+      }
+    });
+
+    //if (!mounted) return;
+    return devices;
   }
 }

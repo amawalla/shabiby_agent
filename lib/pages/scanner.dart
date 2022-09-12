@@ -2,11 +2,13 @@
 
 import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:repair_service_ui/actions/api.dart';
 import 'package:repair_service_ui/models/model.dart';
 import 'package:repair_service_ui/pages/booking/show.dart';
+import 'package:repair_service_ui/pages/setting/bluetooth/bluetooth.dart';
 import 'package:repair_service_ui/utils/functions.dart';
 import 'package:ticket_widget/ticket_widget.dart';
 
@@ -26,6 +28,7 @@ class _ScannerState extends State<Scanner> with SingleTickerProviderStateMixin {
   bool isStarted = true;
   BookingModel booking;
   bool isLoading = false;
+  final box = GetStorage();
 
   void initState() {
     super.initState();
@@ -37,14 +40,33 @@ class _ScannerState extends State<Scanner> with SingleTickerProviderStateMixin {
       backgroundColor: Colors.redAccent,
       appBar: AppBar(
         backgroundColor: Colors.redAccent,
+        centerTitle: true,
         title: Text(
           'HAKIKI TIKETI',
         ),
+        actions: [
+          box.read('is_printer') == false
+              ? InkWell(
+                  onTap: () => Functions.pushPage(context, BluetoothSetting()),
+                  child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: box.read('bluetooth_device_connected') != null
+                          ? Icon(
+                              Icons.bluetooth_connected_rounded,
+                              color: Colors.white70,
+                              size: 28,
+                            )
+                          : Icon(
+                              Icons.bluetooth_disabled,
+                              color: Colors.white70,
+                              size: 28,
+                            )),
+                )
+              : SizedBox()
+        ],
       ),
       body: Builder(
         builder: (context) {
-          double height = MediaQuery.of(context).size.height;
-          double width = MediaQuery.of(context).size.width;
           return Stack(
             children: [
               isStarted == false
@@ -76,7 +98,7 @@ class _ScannerState extends State<Scanner> with SingleTickerProviderStateMixin {
                 alignment: Alignment.bottomCenter,
                 child: Container(
                   alignment: Alignment.bottomCenter,
-                  height: 100,
+                  height: 80,
                   color: Colors.redAccent,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -182,8 +204,8 @@ class _ScannerState extends State<Scanner> with SingleTickerProviderStateMixin {
                               if (!mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('No barcode found!'),
-                                  backgroundColor: Colors.red,
+                                  content: Text('Hakuna barcode imepatikana!'),
+                                  backgroundColor: Colors.black,
                                 ),
                               );
                             }
@@ -209,13 +231,13 @@ class _ScannerState extends State<Scanner> with SingleTickerProviderStateMixin {
             padding: EdgeInsets.only(left: 20, right: 20, bottom: 40),
             child: TicketWidget(
                 width: 350,
-                height: MediaQuery.of(context).size.height - 200,
+                height: MediaQuery.of(context).size.height * 0.75,
                 isCornerRounded: true,
                 margin: EdgeInsets.only(top: 20),
                 padding: EdgeInsets.all(10),
                 child: booking == null
                     ? EmptyWidget(
-                        title: 'Scan Tiketi',
+                        title: 'Tafuta Tiketi',
                         titleTextStyle: TextStyle(
                             fontSize: 30, fontWeight: FontWeight.w600),
                         subTitle: 'Scan tiketi kuangalia uhalali',

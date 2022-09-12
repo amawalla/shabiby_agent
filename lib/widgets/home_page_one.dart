@@ -1,5 +1,6 @@
 // ignore_for_file: unused_element
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/svg.dart';
@@ -8,6 +9,7 @@ import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:repair_service_ui/actions/api.dart';
 import 'package:repair_service_ui/pages/booking/booking.dart';
+import 'package:repair_service_ui/pages/booking/create.dart';
 import 'package:repair_service_ui/pages/home.dart';
 import 'package:repair_service_ui/pages/scanner.dart';
 import 'package:repair_service_ui/pages/schedule/index.dart';
@@ -35,11 +37,6 @@ class _HomePageOneState extends State<HomePageOne> {
   bool _isLoading = false;
   TextEditingController _ticketNo = TextEditingController(text: null);
 
-  MobileScannerController _scannerController = MobileScannerController(
-    formats: [BarcodeFormat.qrCode],
-    facing: CameraFacing.back,
-  );
-
   @override
   void initState() {
     super.initState();
@@ -56,8 +53,8 @@ class _HomePageOneState extends State<HomePageOne> {
         "name": "Kata Tiketi",
         "icon": "assets/svg/bus.svg",
         "key": "mobile",
-        "width": 80,
-        "height": 80,
+        "width": 75,
+        "height": 75,
         'page': 'book',
       },
       {
@@ -76,16 +73,16 @@ class _HomePageOneState extends State<HomePageOne> {
         "icon": "assets/svg/schedule.svg",
         "key": "laptop",
         'page': 'schedule',
-        "width": 80,
-        "height": 80,
+        "width": 75,
+        "height": 75,
       },
       {
         "name": "Tafuta Tiketi",
         "icon": "assets/svg/pos.svg",
         "key": "desktop",
         'page': 'print',
-        "width": 90,
-        "height": 90,
+        "width": 75,
+        "height": 75,
       },
     ],
     // Third
@@ -95,16 +92,16 @@ class _HomePageOneState extends State<HomePageOne> {
         "icon": "assets/svg/profile.svg",
         "key": "watch",
         'page': 'profile',
-        "width": 80,
-        "height": 80,
+        "width": 75,
+        "height": 75,
       },
       {
         "name": "Mipangilio",
         "icon": "assets/svg/setting.svg",
         "key": "headphone",
         'page': 'setting',
-        "width": 80,
-        "height": 80,
+        "width": 75,
+        "height": 75,
       },
     ],
   ];
@@ -121,7 +118,7 @@ class _HomePageOneState extends State<HomePageOne> {
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     double heightFromWhiteBg =
-        size.height - 150.0 - Scaffold.of(context).appBarMaxHeight;
+        size.height - 130.0 - Scaffold.of(context).appBarMaxHeight;
     return Consumer<AuthProvider>(
         builder: (BuildContext context, auth, Widget child) {
       return Container(
@@ -130,7 +127,7 @@ class _HomePageOneState extends State<HomePageOne> {
         child: Stack(
           children: [
             Container(
-              height: 170.0,
+              height: 150.0,
               width: size.width,
               padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 0),
               child: FittedBox(
@@ -158,7 +155,7 @@ class _HomePageOneState extends State<HomePageOne> {
                         "Chagua huduma",
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 35.0,
+                          fontSize: 27.0,
                           fontWeight: FontWeight.w600,
                           height: 1.2,
                         ),
@@ -172,7 +169,7 @@ class _HomePageOneState extends State<HomePageOne> {
               ),
             ),
             Positioned(
-              top: 150.0,
+              top: 130.0,
               width: size.width,
               child: Container(
                 height: heightFromWhiteBg,
@@ -186,7 +183,7 @@ class _HomePageOneState extends State<HomePageOne> {
               ),
             ),
             Positioned(
-              top: 150.0,
+              top: 130.0,
               height: heightFromWhiteBg,
               width: size.width,
               child: Container(
@@ -241,11 +238,14 @@ class _HomePageOneState extends State<HomePageOne> {
             backgroundColor: Colors.transparent));
   }
 
-  _showPrintTicketModal(BuildContext context) {
+  _showAboutDialog(BuildContext context) {}
+
+  _showSearchTicketModal(BuildContext context) {
     showBarModalBottomSheet(
+        isDismissible: true,
         backgroundColor: Colors.white,
         useRootNavigator: true,
-        elevation: 3,
+        elevation: 0,
         context: context,
         builder: (context) {
           return StatefulBuilder(builder: (BuildContext context,
@@ -259,7 +259,7 @@ class _HomePageOneState extends State<HomePageOne> {
                   children: <Widget>[
                     Material(
                         shadowColor: Colors.grey.shade300,
-                        elevation: 7,
+                        elevation: 3,
                         child: Container(
                           color: Colors.redAccent,
                           padding: const EdgeInsets.symmetric(
@@ -387,46 +387,6 @@ class _HomePageOneState extends State<HomePageOne> {
         });
   }
 
-  showSignOut(BuildContext context, AuthProvider auth) {
-    showDialog(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: Text(
-            'SIGN OUT',
-            style: TextStyle(
-                color: Constants.primaryColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w600),
-          ),
-          content: Text(
-            'Do you want to sign out .?',
-          ),
-          actions: <Widget>[
-            FlatButton(
-              textColor: Theme.of(context).accentColor,
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel',
-                  style: TextStyle(
-                      color: Constants.primaryColor,
-                      fontWeight: FontWeight.w600)),
-            ),
-            FlatButton(
-              textColor: Colors.red,
-              onPressed: () async {
-                await auth.logout();
-                return await Functions.pushPage(context, Home());
-              }, // Go to login
-              child: Text('Confirm',
-                  style: TextStyle(
-                      color: Constants.redColor, fontWeight: FontWeight.w600)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   divider() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: fixPadding * 2.0),
@@ -439,15 +399,13 @@ class _HomePageOneState extends State<HomePageOne> {
   getItemAction(item, nextPage, BuildContext context, AuthProvider auth) {
     switch (item['page']) {
       case 'book':
-        return Future.delayed(Duration(milliseconds: 100), () {
-          nextPage();
-        });
+        return Functions.pushPage(context, BookingCreate());
       case 'search':
         return Functions.pushPage(context, Scanner());
       case 'schedule':
         return Functions.pushPage(context, SchedulePage());
       case 'print':
-        return _showPrintTicketModal(context);
+        return _showSearchTicketModal(context);
       case 'profile':
         return Functions.pushPage(context, Profile());
       case 'setting':
@@ -470,7 +428,7 @@ class _HomePageOneState extends State<HomePageOne> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 100),
           decoration: BoxDecoration(
-            color: isActive ? Colors.redAccent : Colors.grey.shade50,
+            color: isActive ? Colors.redAccent : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(20.0),
           ),
           child: Column(
@@ -483,15 +441,13 @@ class _HomePageOneState extends State<HomePageOne> {
                 width: double.parse(item['width'].toString()),
                 height: double.parse(item['height'].toString()),
               ),
-              SizedBox(
-                height: 10.0,
-              ),
               Text(
                 item["name"],
                 style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 16.0,
-                    color: isActive ? Colors.white : Colors.black87),
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.0,
+                    color: isActive ? Colors.white : Colors.black),
               )
             ],
           ),
